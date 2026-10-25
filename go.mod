@@ -1,10 +1,12 @@
-module kandev-plugin-template
+module kandev-plugin-nono
 
 go 1.26.0
 
 require (
 	github.com/kandev/kandev v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
+	google.golang.org/grpc v1.83.2
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -21,9 +23,7 @@ require (
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
-	google.golang.org/grpc v1.83.1 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
@@ -32,4 +32,4 @@ require (
 // monorepo. See README.md "Developing against the SDK" for the sibling-repo
 // layout this path assumes, and what changes once pkg/pluginsdk ships as its
 // own versioned module.
-replace github.com/kandev/kandev => ../kandev/apps/backend
+replace github.com/kandev/kandev => ../kdlbs-kandev/apps/backend

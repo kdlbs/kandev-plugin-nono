@@ -1,0 +1,9 @@
+{
+  "version": "0.80.0",
+  "source_commit": "8bb041356d48f771a221e58c98d9b1ff442e76fe",
+  "url": "https://github.com/nolabs-ai/nono/releases/download/v0.80.0/nono-v0.80.0-x86_64-unknown-linux-musl.tar.gz",
+  "archive_sha256": "cae6755f1188b561ea02f62995feb8ad87d457f6d5255956ec54f41bbefca31e",
+  "binary_sha256": "a66396777ed756dff196ef61cf704abd4feebf58599d41e2da3363bbe90e22af",
+  "member": "nono",
+  "platform": "linux-amd64"
+}

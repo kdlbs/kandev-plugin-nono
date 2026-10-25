@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev
-          path: kandev
+          path: kdlbs-kandev
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
@@ -84,19 +84,6 @@ jobs:
         with:
           go-version-file: plugin/go.mod
           cache-dependency-path: plugin/go.sum
-
-      - name: Set up Node
-        if: ${{ !inputs.dry_run }}
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
-
-      - name: Install locked UI test dependencies
-        if: ${{ !inputs.dry_run }}
-        working-directory: plugin
-        run: npm ci --ignore-scripts
 
       - name: Compute next release version
         id: version
@@ -194,7 +181,6 @@ jobs:
           make check-format
           make vet
           make test
-          make audit-recipes
           make verify-package
           PACKAGE_FILE="$(make --no-print-directory -s package-file)"
           sh scripts/verify-release-version.sh "$TAG" "$PACKAGE_FILE"
@@ -247,7 +233,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev
-          path: kandev
+          path: kdlbs-kandev
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
@@ -258,17 +244,6 @@ jobs:
         with:
           go-version-file: plugin/go.mod
           cache-dependency-path: plugin/go.sum
-
-      - name: Set up Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
-
-      - name: Install locked UI test dependencies
-        working-directory: plugin
-        run: npm ci --ignore-scripts
 
       - name: Verify release identity and package
         id: verify
@@ -283,7 +258,6 @@ jobs:
           make check-format
           make vet
           make test
-          make audit-recipes
           make verify-package
           PACKAGE_FILE="$(make --no-print-directory -s package-file)"
           sh scripts/verify-release-version.sh "$TAG" "$PACKAGE_FILE"
