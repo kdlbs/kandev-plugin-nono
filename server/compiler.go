@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -75,6 +76,16 @@ func (*nonoPlugin) CompileSandboxPolicy(ctx context.Context, req *pluginsdk.Comp
 	if len(req.Policy.Grants.Network) > 0 || req.Policy.Grants.KandevMcp {
 		result.Compiled.RequiredCapabilities = append(result.Compiled.RequiredCapabilities, "egress_proxy")
 		result.Compiled.Artifacts[0].Bindings = append(result.Compiled.Artifacts[0].Bindings, &pluginsdk.SandboxArtifactBinding{Path: []string{"network", "upstream_proxy"}, RuntimeReference: "sandbox.egress.endpoint"})
+	}
+	if req.Policy.Grants.KandevMcp {
+		if _, err := exec.LookPath("env"); err != nil {
+			return nil, status.Error(codes.FailedPrecondition, "proxy environment launcher is unavailable")
+		}
+		// Nono injects loopback bypass entries after profile environment values.
+		// The child must reach the approved MCP relay through the enforced proxy.
+		for _, token := range []string{"env", "-u", "NO_PROXY", "-u", "no_proxy", "-u", "NONO_NO_PROXY", "--"} {
+			result.Compiled.Prefix = append(result.Compiled.Prefix, literal(token))
+		}
 	}
 	return result, nil
 }

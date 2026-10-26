@@ -72,6 +72,9 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 		port, err := strconv.Atoi(endpoint.Port())
 		require.NoError(t, err)
 		req.Policy.Grants.Network = []*pluginsdk.SandboxNetworkGrant{{Host: endpoint.Hostname(), Port: uint32(port), Protocol: "tcp"}}
+		req.Policy.Grants.KandevMcp = true
+		req.Endpoints = []*pluginsdk.SandboxEndpoint{{Key: "kandev.mcp", Host: endpoint.Hostname(), Port: uint32(port), Scheme: "http", Path: "/mcp"}}
+		grantRuntimeEnvDependencies(t, req)
 	}
 	response, err := (&nonoPlugin{}).CompileSandboxPolicy(context.Background(), req)
 	require.NoError(t, err)
@@ -105,6 +108,11 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.WaitDelay = time.Second
 	cmd.Env = []string{"HOME=" + filepath.Join(root, "home"), "XDG_CONFIG_HOME=" + filepath.Join(root, "config"), "XDG_STATE_HOME=" + filepath.Join(root, "state"), "TMPDIR=" + filepath.Join(root, "tmp"), "PATH=/usr/bin:/bin", "FIXTURE_PRIVATE_VALUE=synthetic-secret"}
+	if withProxy {
+		envPath, err := exec.LookPath("env")
+		require.NoError(t, err)
+		cmd.Env = append(cmd.Env, "PATH="+filepath.Dir(envPath)+":/usr/bin:/bin")
+	}
 	for _, name := range []string{"home", "config", "state", "tmp"} {
 		require.NoError(t, os.Mkdir(filepath.Join(root, name), 0700))
 	}
@@ -116,6 +124,7 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 	if withProxy {
 		expected["allowed_proxy"] = true
 		expected["denied_proxy"] = true
+		expected["proxy_bypass_removed"] = true
 	}
 	require.Equal(t, expected, results)
 	require.Zero(t, forbiddenRequests.Load())
@@ -134,4 +143,23 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 	unchanged, err := os.ReadFile(outside)
 	require.NoError(t, err)
 	require.Equal(t, "outside-marker", string(unchanged))
+}
+
+func grantRuntimeEnvDependencies(t *testing.T, request *pluginsdk.CompileSandboxPolicyRequest) {
+	t.Helper()
+	envPath, err := exec.LookPath("env")
+	require.NoError(t, err)
+	canonical, err := filepath.EvalSymlinks(envPath)
+	require.NoError(t, err)
+	request.Policy.Grants.Filesystem = append(request.Policy.Grants.Filesystem, &pluginsdk.SandboxFilesystemGrant{Path: canonical})
+	output, err := exec.Command("ldd", envPath).Output()
+	require.NoError(t, err)
+	for _, field := range strings.Fields(string(output)) {
+		if !filepath.IsAbs(field) {
+			continue
+		}
+		dependency, err := filepath.EvalSymlinks(field)
+		require.NoError(t, err)
+		request.Policy.Grants.Filesystem = append(request.Policy.Grants.Filesystem, &pluginsdk.SandboxFilesystemGrant{Path: dependency})
+	}
 }

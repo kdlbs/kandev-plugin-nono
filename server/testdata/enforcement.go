@@ -32,6 +32,7 @@ func main() {
 	}
 	results["secret_removed"] = os.Getenv("FIXTURE_PRIVATE_VALUE") == ""
 	if len(os.Args) > 5 {
+		results["proxy_bypass_removed"] = os.Getenv("NO_PROXY") == "" && os.Getenv("no_proxy") == "" && os.Getenv("NONO_NO_PROXY") == ""
 		proxy, err := url.Parse(os.Getenv("HTTP_PROXY"))
 		if err == nil && proxy.Host != "" {
 			client := http.Client{Timeout: 2 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(proxy)}}
