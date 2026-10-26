@@ -2,106 +2,55 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"time"
 
 	"github.com/kandev/kandev/pkg/pluginsdk"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-// eventCountStateKey is the Host state key this template uses to demonstrate
-// the GetState/SetState round trip: every task.created delivery increments a
-// persistent counter kept in kandev's state store, scoped to this plugin
-// instance. Delete this (and OnEvent) if your plugin doesn't handle events.
-const eventCountStateKey = "event_count"
+const (
+	providerVersion  = "0.1.0"
+	runtimeVersion   = "0.80.0"
+	runtimeDigest    = "a66396777ed756dff196ef61cf704abd4feebf58599d41e2da3363bbe90e22af"
+	approvalEndpoint = "sandbox.approval.endpoint"
+)
 
-// templatePlugin implements pluginsdk.Plugin (via UnimplementedPlugin). It is
-// the one type you customize on the backend side: embed UnimplementedPlugin
-// for no-op defaults, then override only the RPCs you need
-// (OnEvent / HandleWebhook). Rename it to match your plugin.
-type templatePlugin struct {
-	pluginsdk.UnimplementedPlugin
+type nonoPlugin struct{ pluginsdk.UnimplementedPlugin }
+
+func replyContext(ctx context.Context, req *pluginsdk.SandboxRequestContext) (*pluginsdk.SandboxResponseContext, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if req == nil || req.ProtocolMajor != 1 || req.ProviderKey != "nono" || req.InstallationId == "" || req.OperationId == "" || req.AttemptId == "" || req.Generation == 0 || req.DeadlineUnixMs <= time.Now().UnixMilli() {
+		return nil, status.Error(codes.InvalidArgument, "invalid sandbox operation")
+	}
+	return &pluginsdk.SandboxResponseContext{SchemaVersion: 1, OperationId: req.OperationId}, nil
 }
 
-var _ pluginsdk.Plugin = (*templatePlugin)(nil)
+func supportedHost(runtime *pluginsdk.SandboxRuntimeFacts) bool {
+	return runtime != nil && runtime.Os == "linux" && runtime.Architecture == "amd64" && (runtime.Transport == "local" || runtime.Transport == "worktree")
+}
 
-// OnEvent is called for every event type declared in manifest.yaml's
-// capabilities.events. Here it logs the delivery and, when a Host has been
-// injected, increments a persistent counter through Host state. Returning an
-// error asks kandev to retry the delivery; return nil to acknowledge.
-func (p *templatePlugin) OnEvent(ctx context.Context, e *pluginsdk.Event) error {
-	log.Printf("event delivered: type=%s id=%s", e.EventType, e.EventID)
-
-	host := p.Host()
-	if host == nil {
-		// Host not injected yet (e.g. the broker dial is still in
-		// progress) — nothing more to do for this delivery.
-		return nil
-	}
-
-	count, err := incrementEventCount(ctx, host)
+func (*nonoPlugin) DescribeSandboxProvider(ctx context.Context, req *pluginsdk.DescribeSandboxProviderRequest) (*pluginsdk.DescribeSandboxProviderResponse, error) {
+	reply, err := replyContext(ctx, req.GetContext())
 	if err != nil {
-		return fmt.Errorf("kandev-plugin-template: updating event count in Host state: %w", err)
+		return nil, err
 	}
-	log.Printf("events counted via Host state: %d", count)
-	return nil
-}
-
-// incrementEventCount reads the current count from Host state (0 if unset),
-// writes back count+1, and returns the new count. Note numbers come back from
-// Host state as float64 (the values round-trip through a protobuf Struct on
-// the wire), so read them as float64 before converting.
-func incrementEventCount(ctx context.Context, host pluginsdk.Host) (int, error) {
-	value, found, err := host.GetState(ctx, "instance", "", eventCountStateKey)
-	if err != nil {
-		return 0, fmt.Errorf("reading %s: %w", eventCountStateKey, err)
+	if !supportedHost(req.Runtime) {
+		return nil, status.Error(codes.FailedPrecondition, "unsupported sandbox host")
 	}
-
-	count := 0
-	if found {
-		if c, ok := value["count"].(float64); ok {
-			count = int(c)
-		}
-	}
-	count++
-
-	if err := host.SetState(ctx, "instance", "", eventCountStateKey, map[string]any{"count": count}); err != nil {
-		return 0, fmt.Errorf("writing %s: %w", eventCountStateKey, err)
-	}
-	return count, nil
-}
-
-// HandleWebhook implements the webhooks declared in manifest.yaml. kandev
-// proxies POST /api/plugins/<id>/webhooks/<key> here; dispatch on
-// req.WebhookKey and return the status/body kandev should send back. This one
-// answers with a greeting built from the operator-configured settings, to
-// show a config read end to end.
-func (p *templatePlugin) HandleWebhook(ctx context.Context, req *pluginsdk.WebhookRequest) (*pluginsdk.WebhookResponse, error) {
-	log.Printf("webhook received: key=%s method=%s body=%s", req.WebhookKey, req.Method, string(req.Body))
-	body := fmt.Sprintf("%s, webhook!", p.greeting(ctx))
-	return &pluginsdk.WebhookResponse{Status: 200, Body: []byte(body)}, nil
-}
-
-// greeting reads this plugin's operator-editable settings through the Host
-// GetConfig RPC — the values saved on the plugin's settings page (the
-// manifest's config_schema). kandev restarts the plugin process whenever the
-// operator saves, so reading on demand always observes the current values.
-// Config is best-effort here: with no Host injected yet, or on an RPC error,
-// the greeting falls back to "Hello". A secret field like api_token arrives
-// in cleartext through this same call — the only surface where its real value
-// is visible.
-func (p *templatePlugin) greeting(ctx context.Context) string {
-	const fallback = "Hello"
-	host := p.Host()
-	if host == nil {
-		return fallback
-	}
-	config, err := host.GetConfig(ctx)
-	if err != nil {
-		log.Printf("reading plugin config: %v", err)
-		return fallback
-	}
-	if greeting, _ := config["greeting"].(string); greeting != "" {
-		return greeting
-	}
-	return fallback
+	return &pluginsdk.DescribeSandboxProviderResponse{Context: reply, Description: &pluginsdk.SandboxProviderDescription{
+		DisplayName: "Nono", ProviderVersion: providerVersion, RuntimeVersion: runtimeVersion,
+		RuntimeSources: []*pluginsdk.SandboxRuntimeSource{
+			{Key: "nono.session-registry.v1", Kind: "identity", RelativeDirectory: "nono/sessions", FilenameSuffix: ".json", MaxDepth: 1, MaxFiles: 16, MaxBytes: 64 << 10},
+			{Key: "nono.audit.v1", Kind: "audit", RelativeDirectory: "nono/audit", FilenameSuffix: "audit-events.ndjson", MaxDepth: 2, MaxFiles: 16, MaxBytes: 1 << 20},
+		},
+		ApprovalWire:        &pluginsdk.SandboxApprovalWire{ContentType: "application/json", AllowOnceBodyUtf8: `{"decision":"granted"}`, DenyBodyUtf8: `{"decision":"denied"}`, TimeoutBodyUtf8: `{"decision":"timeout"}`},
+		RuntimeArtifact:     &pluginsdk.SandboxRuntimeArtifact{RelativePath: "runtime/nono-linux-amd64", Sha256: runtimeDigest},
+		SupportedTransports: []string{"local", "worktree"},
+		SupportedFeatures:   []string{"filesystem", "network_proxy", "approval_webhook"},
+		ReportClasses:       []string{"filesystem"},
+		Limitations:         []string{"Linux amd64 only. Kernel enforcement is verified at launch.", "Network grants authorize destination TCP connections through the proxy.", "Audit reports cover filesystem capability decisions only. Other denials are not recorded."},
+	}}, nil
 }
