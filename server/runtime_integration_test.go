@@ -138,6 +138,42 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 	require.Equal(t, "partial", report.Integrity)
 	require.False(t, report.Complete)
 	require.GreaterOrEqual(t, len(report.Records), 2)
+	sessionID := filepath.Base(filepath.Dir(audits[0]))
+	metadata, err := os.ReadFile(filepath.Join(filepath.Dir(audits[0]), "session.json"))
+	require.NoError(t, err, "the pinned runtime must produce the finalized metadata used by this acceptance case")
+	sources := []streamFixtureSource{{"nono.audit.v1", "nono/audit/" + sessionID + "/audit-events.ndjson", audit}, {"nono.session.v1", "nono/audit/" + sessionID + "/session.json", metadata}}
+	frames := streamFixtureRequestsForSession(t, sessionID, sources, 256<<10)
+	var typed []*pluginsdk.SandboxAuditEventV2
+	provider := &nonoPlugin{}
+	var typedReport *pluginsdk.SandboxReportV2
+	for _, frame := range frames {
+		response, err := provider.ReadSandboxReport(context.Background(), frame)
+		if err != nil {
+			logReportFixtureFailure(t, audit, frame)
+		}
+		require.NoError(t, err, "source=%s index=%d", frame.ChunkV2.SourceSchema, frame.ChunkV2.SourceIndex)
+		require.NotNil(t, response.ReportV2)
+		typed = append(typed, response.ReportV2.Events...)
+		typedReport = response.ReportV2
+	}
+	require.Equal(t, "valid", typedReport.Integrity)
+	require.Equal(t, "final", typedReport.Finalization)
+	filesystemCount := 0
+	for _, event := range typed {
+		if event.Operation.GetFilesystem() != nil {
+			filesystemCount++
+		}
+	}
+	require.GreaterOrEqual(t, filesystemCount, 2)
+	if withProxy {
+		networkCount := 0
+		for _, event := range typed {
+			if event.Operation.GetTcp() != nil || event.Operation.GetHttpEndpoint() != nil {
+				networkCount++
+			}
+		}
+		require.Greater(t, networkCount, 0, "real proxy decisions must reach the typed report")
+	}
 
 	require.NotContains(t, strings.ToLower(string(output)), "synthetic-secret")
 	unchanged, err := os.ReadFile(outside)
@@ -162,4 +198,28 @@ func grantRuntimeEnvDependencies(t *testing.T, request *pluginsdk.CompileSandbox
 		require.NoError(t, err)
 		request.Policy.Grants.Filesystem = append(request.Policy.Grants.Filesystem, &pluginsdk.SandboxFilesystemGrant{Path: dependency})
 	}
+}
+
+func logReportFixtureFailure(t *testing.T, audit []byte, request *pluginsdk.ReadSandboxReportRequest) {
+	t.Helper()
+	records, err := verifyAuditChain(audit)
+	require.NoError(t, err)
+	for index, raw := range records {
+		_, err := normalizeReportEvent(raw, uint64(index), request)
+		if err == nil {
+			continue
+		}
+		var event networkReportEvent
+		_ = json.Unmarshal(raw, &event)
+		targetIsURL := strings.Contains(event.Event.Target, "://")
+		targetContainsColon := strings.Contains(event.Event.Target, ":")
+		t.Logf("record %d failed: target_is_url=%t target_contains_colon=%t has_port=%t has_method=%t has_path=%t host_valid=%t timestamp_future=%t target_empty=%t", index, targetIsURL, targetContainsColon, event.Event.Port != nil, event.Event.Method != nil, event.Event.Path != nil, validDestination(strings.ToLower(event.Event.Target), max(reportFixturePort(event.Event.Port), 1)), event.Event.Timestamp > uint64(time.Now().Add(5*time.Second).UnixMilli()), event.Event.Target == "")
+	}
+}
+
+func reportFixturePort(value *uint16) uint32 {
+	if value == nil {
+		return 0
+	}
+	return uint32(*value)
 }

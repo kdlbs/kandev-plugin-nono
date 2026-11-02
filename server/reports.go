@@ -13,10 +13,13 @@ import (
 
 var _ pluginsdk.SandboxProviderPlugin = (*nonoPlugin)(nil)
 
-func (*nonoPlugin) ReadSandboxReport(ctx context.Context, req *pluginsdk.ReadSandboxReportRequest) (*pluginsdk.ReadSandboxReportResponse, error) {
+func (p *nonoPlugin) ReadSandboxReport(ctx context.Context, req *pluginsdk.ReadSandboxReportRequest) (*pluginsdk.ReadSandboxReportResponse, error) {
 	reply, err := replyContext(ctx, req.GetContext())
 	if err != nil {
 		return nil, err
+	}
+	if req.ChunkV2 != nil {
+		return p.readStreamReport(ctx, req, reply)
 	}
 	if req.Policy == nil || req.Policy.Digest == "" {
 		return nil, status.Error(codes.InvalidArgument, "report policy is required")

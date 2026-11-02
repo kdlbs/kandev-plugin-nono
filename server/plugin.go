@@ -16,7 +16,10 @@ const (
 	approvalEndpoint = "sandbox.approval.endpoint"
 )
 
-type nonoPlugin struct{ pluginsdk.UnimplementedPlugin }
+type nonoPlugin struct {
+	pluginsdk.UnimplementedPlugin
+	reports reportStreamCache
+}
 
 func replyContext(ctx context.Context, req *pluginsdk.SandboxRequestContext) (*pluginsdk.SandboxResponseContext, error) {
 	if err := ctx.Err(); err != nil {
@@ -54,7 +57,10 @@ func (*nonoPlugin) DescribeSandboxProvider(ctx context.Context, req *pluginsdk.D
 		Limitations:         []string{"Linux amd64 only. Process ownership and launch checks do not attest current kernel confinement.", "Network grants authorize destination TCP connections through the proxy.", "Audit reports cover filesystem capability decisions only. Other denials are not recorded."},
 	}}
 	if req.Context.ProtocolMajor == 2 {
-		result.Description.CapabilitiesV2 = &pluginsdk.SandboxCapabilitiesV2{PolicySchemas: []uint32{1}, OperationKinds: []string{"filesystem"}, ActorKinds: []string{"child_process"}, NetworkMode: "static_egress", ObservationSchemas: []string{"nono.audit.v1"}}
+		result.Description.CapabilitiesV2 = &pluginsdk.SandboxCapabilitiesV2{PolicySchemas: []uint32{1}, OperationKinds: []string{"filesystem"}, ActorKinds: []string{"child_process"}, NetworkMode: "static_egress", ObservationSchemas: []string{"nono.audit.v1"}, ReportSchemas: []string{pluginsdk.SandboxReportSchemaV2}}
+		result.Description.RuntimeSources[1].MaxBytes = maximumReportBytes
+		result.Description.RuntimeSources = append(result.Description.RuntimeSources, &pluginsdk.SandboxRuntimeSource{Key: "nono.session.v1", Kind: "audit_final", RelativeDirectory: "nono/audit", FilenameSuffix: "session.json", MaxDepth: 2, MaxFiles: 16, MaxBytes: 8 << 20})
+		result.Description.Limitations[2] = "Typed reports cover recorded filesystem, network, command and endpoint decisions. Coverage is partial. Redacted identities cannot authorize policy learning."
 	}
 	return result, nil
 }

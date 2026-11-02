@@ -8,7 +8,7 @@ The provider compiles canonical grants for pinned Nono 0.81.0 on Linux amd64. It
 
 The baseline host integration has recorded managed acceptance with Nono 0.80.0, Pi ACP 0.0.34, and Pi 1.3.0. Those historical receipts cover ACP/native tools and MCP, same-session restart, cancellation, sibling isolation, and cleanup. They are recorded in the host's `docs/plans/nono-sandbox-integration/acceptance.md`.
 
-The 0.81.0 candidate passes baseline runtime conformance and the plugin's real compiled-policy race tests. The manifest now requires sandbox protocol major 2. The compiler still accepts policy schema 1 and file approvals only. The public standalone SDK pin includes the major 2 contract. Current-pair managed acceptance, typed audit reports, verification, and broader approvals remain pending in the expansion package. Source support for a request kind does not enable it in this plugin.
+The 0.81.0 candidate passes baseline runtime conformance and the plugin's real compiled-policy race tests. The manifest now requires sandbox protocol major 2. The compiler still accepts policy schema 1 and file approvals only. The public standalone SDK pin includes the major 2 contract. Typed audit reports pass the real runtime and packaged host integration checks. Current-pair managed acceptance, signature verification, and broader approvals remain pending in the expansion package. Source support for a request kind does not enable it in this plugin.
 
 A session registry record has no policy digest. Normalization can return supervisor, child, and provider session identity for a matching core-owned process. It returns no confinement evidence. Core must verify birth identity and ancestry before using those identities. Audit reports remain partial because the event log does not record every denied operation.
 
@@ -53,3 +53,24 @@ Nono 0.81.0 injects loopback `NO_PROXY` entries after profile environment settin
 This launch uses the host `env` tool with `-u` support from the child `PATH`. The operator must grant read and execution access to that tool and its runtime libraries, as for the agent executable. Compilation refuses an unavailable `env` tool. The plugin does not add filesystem permissions. Policies without the Kandev MCP grant do not require this launcher.
 
 The pinned [proxy child environment](https://github.com/nolabs-ai/nono/blob/b2d859deeb7a65f9ca5b334eb8726637ba76c866/crates/nono-proxy/src/server.rs) and [environment application order](https://github.com/nolabs-ai/nono/blob/b2d859deeb7a65f9ca5b334eb8726637ba76c866/crates/nono-cli/src/exec_strategy.rs) explain why profile `set_vars` cannot clear the injected bypass entries.
+
+## Typed report support
+
+The protocol major 2 capability `kandev.sandbox.report.v2` accepts core-frozen,
+session-bound sources in chunks of at most 256 KiB. Collection is bounded to
+32 files and 32 MiB. The reader checks sequence, source digest, artifact-set
+digest, captured session, event hashes, and chain links. Final `session.json`
+metadata additionally binds the event count, chain head, and Merkle root.
+
+Reports include recorded filesystem, network, command, and HTTP-endpoint
+decisions. Each class has partial coverage. Nono does not record every denied
+operation. Command events expose the command ID and caller. They do not expose
+raw arguments, environment values, or working-directory paths. Pending command
+invocation outcomes are omitted until a supported terminal record exists.
+Endpoint query values and unusable hostnames are not reconstructed. Incomplete
+identities remain readable evidence and cannot authorize policy learning.
+
+Live records, finalization, and chain integrity are separate facts. This report
+reader does not assert signature validity, signer trust, ledger validity, or
+continuous kernel confinement. A changed or unsupported source fails the read.
+The host retains the last successful report and its original read time.

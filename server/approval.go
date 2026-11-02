@@ -57,6 +57,9 @@ func boundedIdentity(value string) bool {
 	return value != "" && len(value) <= 256 && !strings.ContainsFunc(value, unicode.IsControl)
 }
 func decodeStrictJSON(data []byte, value any) error {
+	if !uniqueJSONFields(data) {
+		return status.Error(codes.InvalidArgument, "invalid JSON framing")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(value); err != nil {
