@@ -13,4 +13,4 @@ capabilities:
 sandbox_providers:
   - key: nono
     display_name: Nono
-    protocol_major: 1
+    protocol_major: 2

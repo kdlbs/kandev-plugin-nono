@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/kandev/kandev/pkg/pluginsdk"
+	"github.com/kdlbs/kandev/pluginsdk"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 const (
 	providerVersion  = "0.1.0"
-	runtimeVersion   = "0.80.0"
-	runtimeDigest    = "a66396777ed756dff196ef61cf704abd4feebf58599d41e2da3363bbe90e22af"
+	runtimeVersion   = "0.81.0"
+	runtimeDigest    = "2d3c29641c87921f7cd469387e4838b1676d54edb7291aebda7a780787d7c1b2"
 	approvalEndpoint = "sandbox.approval.endpoint"
 )
 
@@ -22,10 +22,10 @@ func replyContext(ctx context.Context, req *pluginsdk.SandboxRequestContext) (*p
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if req == nil || req.ProtocolMajor != 1 || req.ProviderKey != "nono" || req.InstallationId == "" || req.OperationId == "" || req.AttemptId == "" || req.Generation == 0 || req.DeadlineUnixMs <= time.Now().UnixMilli() {
+	if req == nil || (req.ProtocolMajor != 1 && req.ProtocolMajor != 2) || req.ProviderKey != "nono" || req.InstallationId == "" || req.OperationId == "" || req.AttemptId == "" || req.Generation == 0 || req.DeadlineUnixMs <= time.Now().UnixMilli() {
 		return nil, status.Error(codes.InvalidArgument, "invalid sandbox operation")
 	}
-	return &pluginsdk.SandboxResponseContext{SchemaVersion: 1, OperationId: req.OperationId}, nil
+	return &pluginsdk.SandboxResponseContext{SchemaVersion: req.ProtocolMajor, OperationId: req.OperationId}, nil
 }
 
 func supportedHost(runtime *pluginsdk.SandboxRuntimeFacts) bool {
@@ -40,7 +40,7 @@ func (*nonoPlugin) DescribeSandboxProvider(ctx context.Context, req *pluginsdk.D
 	if !supportedHost(req.Runtime) {
 		return nil, status.Error(codes.FailedPrecondition, "unsupported sandbox host")
 	}
-	return &pluginsdk.DescribeSandboxProviderResponse{Context: reply, Description: &pluginsdk.SandboxProviderDescription{
+	result := &pluginsdk.DescribeSandboxProviderResponse{Context: reply, Description: &pluginsdk.SandboxProviderDescription{
 		DisplayName: "Nono", ProviderVersion: providerVersion, RuntimeVersion: runtimeVersion,
 		RuntimeSources: []*pluginsdk.SandboxRuntimeSource{
 			{Key: "nono.session-registry.v1", Kind: "identity", RelativeDirectory: "nono/sessions", FilenameSuffix: ".json", MaxDepth: 1, MaxFiles: 16, MaxBytes: 64 << 10},
@@ -51,6 +51,10 @@ func (*nonoPlugin) DescribeSandboxProvider(ctx context.Context, req *pluginsdk.D
 		SupportedTransports: []string{"local", "worktree"},
 		SupportedFeatures:   []string{"filesystem", "network_proxy", "approval_webhook"},
 		ReportClasses:       []string{"filesystem"},
-		Limitations:         []string{"Linux amd64 only. Kernel enforcement is verified at launch.", "Network grants authorize destination TCP connections through the proxy.", "Audit reports cover filesystem capability decisions only. Other denials are not recorded."},
-	}}, nil
+		Limitations:         []string{"Linux amd64 only. Process ownership and launch checks do not attest current kernel confinement.", "Network grants authorize destination TCP connections through the proxy.", "Audit reports cover filesystem capability decisions only. Other denials are not recorded."},
+	}}
+	if req.Context.ProtocolMajor == 2 {
+		result.Description.CapabilitiesV2 = &pluginsdk.SandboxCapabilitiesV2{PolicySchemas: []uint32{1}, OperationKinds: []string{"filesystem"}, ActorKinds: []string{"child_process"}, NetworkMode: "static_egress", ObservationSchemas: []string{"nono.audit.v1"}}
+	}
+	return result, nil
 }

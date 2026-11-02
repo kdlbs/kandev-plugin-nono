@@ -2,25 +2,25 @@
 
 This repository contains the optional Nono provider. Core command wrapping works without this plugin.
 
-The provider compiles canonical grants for pinned Nono 0.80.0 on Linux amd64. It translates file approval requests and decision replies. It verifies audit event chains and proposes grants from explicitly selected denial records. Kandev owns process launch, operator authority, ceilings, persistence, and cleanup.
+The provider compiles canonical grants for pinned Nono 0.81.0 on Linux amd64. It translates file approval requests and decision replies. It verifies audit event chains and proposes grants from explicitly selected denial records. Kandev owns process launch, operator authority, ceilings, persistence, and cleanup.
 
 ## Current status
 
-Implementation is in progress. Real compiled-policy checks cover permitted filesystem work, denied outside access, exact proxy destinations, blocked direct networking, environment filtering, and audit parsing. Full Kandev lifecycle, ACP, terminal, MCP, approval ownership, UI, packaging installation, and recovery acceptance remain pending.
+The baseline host integration has recorded managed acceptance with Nono 0.80.0, Pi ACP 0.0.34, and Pi 1.3.0. Those historical receipts cover ACP/native tools and MCP, same-session restart, cancellation, sibling isolation, and cleanup. They are recorded in the host's `docs/plans/nono-sandbox-integration/acceptance.md`.
+
+The 0.81.0 candidate passes baseline runtime conformance and the plugin's real compiled-policy race tests. The manifest now requires sandbox protocol major 2. The compiler still accepts policy schema 1 and file approvals only. The public standalone SDK pin includes the major 2 contract. Current-pair managed acceptance, typed audit reports, verification, and broader approvals remain pending in the expansion package. Source support for a request kind does not enable it in this plugin.
 
 A session registry record has no policy digest. Normalization can return supervisor, child, and provider session identity for a matching core-owned process. It returns no confinement evidence. Core must verify birth identity and ancestry before using those identities. Audit reports remain partial because the event log does not record every denied operation.
 
-Network grants use protocol `tcp`. Nono 0.80.0 removes ports from plain `allow_domain` entries, so the provider requires Kandev's `egress_proxy` capability for exact host/port enforcement. Core supplies a private upstream CONNECT relay. They do not enforce the application protocol. HTTP/HTTPS-specific grants remain unsupported. Kandev MCP uses its explicit logical grant and current private relay. Full managed-agent acceptance remains pending.
+Protocol major 2 runtime observations parse the conditional `sandbox_runtime` audit event from the captured provider session's file. The provider verifies the event chain and retains the original timestamp, platform, optional detected Landlock ABI, optional execute-enforcement claim, and command-mediation state. A missing event yields no observations. A sibling or nested session file cannot describe the captured supervisor. These historical facts contain no current-policy attestation and cannot activate the shield. Kandev separately reports physical process ownership and its completed launch preparation checks.
+
+Network grants use protocol `tcp`. Nono 0.81.0 removes ports from plain `allow_domain` entries, so the provider requires Kandev's `egress_proxy` capability for exact host/port enforcement. Core supplies a private upstream CONNECT relay. They do not enforce the application protocol. HTTP/HTTPS-specific grants remain unsupported. Kandev MCP uses its explicit logical grant and current private relay. Managed acceptance for the upgraded pair remains pending.
 
 ## Develop
 
-Place this checkout beside `kdlbs-kandev`, which supplies the public Go SDK:
+The plugin imports the standalone `github.com/kdlbs/kandev/pluginsdk` module at an exact public commit version. It has no backend module dependency or local replacement. `sh scripts/check-sdk-consumer.sh` copies the consumer into a temporary directory and builds it without a host checkout. This is an experimental contract pin, not a Stable SDK compatibility claim.
 
-```text
-workspace/
-  kdlbs-kandev/apps/backend/
-  kandev-plugin-nono/
-```
+Only packaging needs the separately pinned host `plugin-pack` tool. The default `KANDEV_PACK_TOOL` is `../kdlbs-kandev/apps/backend`; override it for another checkout of the revision in `.kandev-sdk-ref`. CI checks out that packaging source separately. Go module resolution supplies the SDK independently.
 
 Run `make validate`. Run actual runtime checks with the verified executable:
 
@@ -36,20 +36,20 @@ The tests verify the executable SHA-256 before starting it. They use private tem
 
 The package includes the Nono Apache 2.0 license and `runtime-lock.json` provenance. Plugin code uses the repository MIT license.
 
-`.kandev-sdk-ref` identifies the committed host contract used by CI. There is no stable Kandev release compatibility claim yet. The manifest capability negotiation rejects hosts without this extension.
+`.kandev-sdk-ref` records the SDK source commit and the matching packaging-tool source used by CI. `go.mod` pins the corresponding standalone module version. There is no stable Kandev release compatibility claim yet. The manifest capability negotiation rejects hosts without this extension.
 
 Source review is open in [draft PR #2](https://github.com/kdlbs/kandev-plugin-nono/pull/2). No marketplace entry or release is published.
 
 ### Agent session state
 
-An explicit host `agent_state` grant gives the child a separate home. The compiler binds core-owned home, config, state, and temporary directory references to Nono `environment.set_vars`. Nono 0.80.0 applies these values after inherited-variable filtering. The supervisor keeps its private home and state directories. The plugin does not copy credentials or allocate directories. Kandev owns session retention and cleanup.
+An explicit host `agent_state` grant gives the child a separate home. The compiler binds core-owned home, config, state, and temporary directory references to Nono `environment.set_vars`. Nono 0.81.0 applies these values after inherited-variable filtering. The supervisor keeps its private home and state directories. The plugin does not copy credentials or allocate directories. Kandev owns session retention and cleanup.
 
-The pinned source contract is [EnvironmentConfig at the runtime commit](https://github.com/nolabs-ai/nono/blob/8bb041356d48f771a221e58c98d9b1ff442e76fe/crates/nono-cli/src/profile/mod.rs). Actual runtime verification is recorded in the host acceptance log.
+The pinned source contract is [EnvironmentConfig at the runtime commit](https://github.com/nolabs-ai/nono/blob/b2d859deeb7a65f9ca5b334eb8726637ba76c866/crates/nono-cli/src/profile/mod.rs). Actual runtime verification is recorded in the host acceptance log.
 
 ### Loopback MCP clients
 
-Nono 0.80.0 injects loopback `NO_PROXY` entries after profile environment settings. The plugin clears `NO_PROXY`, `no_proxy`, and `NONO_NO_PROXY` inside the sandbox before launching an MCP-enabled child. Standard clients must reach the approved relay through the enforced proxy. Direct connections remain blocked. Network grants and the core exact-destination relay do not change.
+Nono 0.81.0 injects loopback `NO_PROXY` entries after profile environment settings. The plugin clears `NO_PROXY`, `no_proxy`, and `NONO_NO_PROXY` inside the sandbox before launching an MCP-enabled child. Standard clients must reach the approved relay through the enforced proxy. Direct connections remain blocked. Network grants and the core exact-destination relay do not change.
 
 This launch uses the host `env` tool with `-u` support from the child `PATH`. The operator must grant read and execution access to that tool and its runtime libraries, as for the agent executable. Compilation refuses an unavailable `env` tool. The plugin does not add filesystem permissions. Policies without the Kandev MCP grant do not require this launcher.
 
-The pinned [proxy child environment](https://github.com/nolabs-ai/nono/blob/8bb041356d48f771a221e58c98d9b1ff442e76fe/crates/nono-proxy/src/server.rs) and [environment application order](https://github.com/nolabs-ai/nono/blob/8bb041356d48f771a221e58c98d9b1ff442e76fe/crates/nono-cli/src/exec_strategy.rs) explain why profile `set_vars` cannot clear the injected bypass entries.
+The pinned [proxy child environment](https://github.com/nolabs-ai/nono/blob/b2d859deeb7a65f9ca5b334eb8726637ba76c866/crates/nono-proxy/src/server.rs) and [environment application order](https://github.com/nolabs-ai/nono/blob/b2d859deeb7a65f9ca5b334eb8726637ba76c866/crates/nono-cli/src/exec_strategy.rs) explain why profile `set_vars` cannot clear the injected bypass entries.

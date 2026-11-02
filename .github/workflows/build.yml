@@ -21,7 +21,7 @@ jobs:
         with:
           path: plugin
 
-      - name: Read pinned Kandev source revision
+      - name: Read pinned packaging-tool revision
         id: sdk
         working-directory: plugin
         run: |
@@ -30,7 +30,7 @@ jobs:
           [[ "$sdk_ref" =~ ^[0-9a-f]{40}$ ]]
           echo "ref=$sdk_ref" >> "$GITHUB_OUTPUT"
 
-      - name: Check out kandev SDK contract
+      - name: Check out Kandev packaging tool
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev

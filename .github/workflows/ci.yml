@@ -16,14 +16,13 @@ jobs:
     name: Tidy, format, vet, and test
     runs-on: ubuntu-latest
     steps:
-      # The local SDK replacement in go.mod expects these checkouts to be
-      # siblings: plugin/../kdlbs-kandev/apps/backend.
+      # The SDK is a pinned public module. Only plugin-pack needs a sibling host checkout.
       - name: Check out plugin
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           path: plugin
 
-      - name: Read pinned Kandev source revision
+      - name: Read pinned packaging-tool revision
         id: sdk
         working-directory: plugin
         run: |
@@ -32,7 +31,7 @@ jobs:
           [[ "$sdk_ref" =~ ^[0-9a-f]{40}$ ]]
           echo "ref=$sdk_ref" >> "$GITHUB_OUTPUT"
 
-      - name: Check out kandev SDK contract
+      - name: Check out Kandev packaging tool
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev
@@ -40,7 +39,6 @@ jobs:
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
-            apps/packages/plugin-sdk
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -53,6 +51,10 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+      - name: Build without a host checkout
+        working-directory: plugin
+        run: sh scripts/check-sdk-consumer.sh
 
       - name: Check formatting
         working-directory: plugin

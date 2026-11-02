@@ -57,7 +57,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Read pinned Kandev source revision
+      - name: Read pinned packaging-tool revision
         id: sdk
         if: ${{ !inputs.dry_run }}
         working-directory: plugin
@@ -67,7 +67,7 @@ jobs:
           [[ "$sdk_ref" =~ ^[0-9a-f]{40}$ ]]
           echo "ref=$sdk_ref" >> "$GITHUB_OUTPUT"
 
-      - name: Check out Kandev SDK contract
+      - name: Check out Kandev packaging tool
         if: ${{ !inputs.dry_run }}
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -76,7 +76,6 @@ jobs:
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
-            apps/packages/plugin-sdk
 
       - name: Set up Go
         if: ${{ !inputs.dry_run }}
@@ -220,7 +219,7 @@ jobs:
           path: plugin
           ref: ${{ github.event_name == 'push' && github.ref || needs.prepare.outputs.tag }}
 
-      - name: Read pinned Kandev source revision
+      - name: Read pinned packaging-tool revision
         id: sdk
         working-directory: plugin
         run: |
@@ -229,7 +228,7 @@ jobs:
           [[ "$sdk_ref" =~ ^[0-9a-f]{40}$ ]]
           echo "ref=$sdk_ref" >> "$GITHUB_OUTPUT"
 
-      - name: Check out Kandev SDK contract
+      - name: Check out Kandev packaging tool
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev
@@ -237,7 +236,6 @@ jobs:
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
-            apps/packages/plugin-sdk
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6

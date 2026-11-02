@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/kandev/kandev/pkg/pluginsdk"
+	"github.com/kdlbs/kandev/pluginsdk"
 	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"testing"

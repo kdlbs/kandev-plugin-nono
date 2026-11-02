@@ -4,7 +4,7 @@ BIN := bin/kandev-plugin-nono
 VERSION := 0.1.0
 STAGE := .build/stage
 PKG_OUT := $(notdir $(BIN))-$(VERSION).tar.gz
-KANDEV_SDK := ../kdlbs-kandev/apps/backend
+KANDEV_PACK_TOOL ?= ../kdlbs-kandev/apps/backend
 
 build:
 	mkdir -p bin
@@ -36,7 +36,7 @@ package:
 	cp licenses/NONO-APACHE-2.0.txt $(STAGE)/licenses/
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o $(STAGE)/server/plugin-linux-amd64 ./server
 	python3 scripts/runtime_package.py prepare $(STAGE)/runtime/nono-linux-amd64
-	cd $(KANDEV_SDK) && go run ./cmd/plugin-pack -dir $(CURDIR)/$(STAGE) -out $(CURDIR)/$(PKG_OUT)
+	cd $(KANDEV_PACK_TOOL) && go run ./cmd/plugin-pack -dir $(CURDIR)/$(STAGE) -out $(CURDIR)/$(PKG_OUT)
 	rm -rf $(STAGE)
 
 package-host: package

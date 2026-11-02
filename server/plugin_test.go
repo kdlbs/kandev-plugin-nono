@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/kandev/kandev/pkg/pluginsdk"
+	"github.com/kdlbs/kandev/pluginsdk"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"testing"
@@ -15,7 +15,7 @@ func requestContext() *pluginsdk.SandboxRequestContext {
 }
 func compileRequest(t *testing.T) *pluginsdk.CompileSandboxPolicyRequest {
 	t.Helper()
-	return &pluginsdk.CompileSandboxPolicyRequest{Context: requestContext(), Runtime: &pluginsdk.SandboxRuntimeFacts{Os: "linux", Architecture: "amd64", Transport: "local", RuntimeVersion: "0.80.0", RuntimeDigest: "a66396777ed756dff196ef61cf704abd4feebf58599d41e2da3363bbe90e22af"}, Policy: &pluginsdk.SandboxPolicySnapshot{PolicyId: "policy", Revision: 1, Digest: "policy-digest", CeilingDigest: "ceiling", Grants: &pluginsdk.SandboxGrants{Filesystem: []*pluginsdk.SandboxFilesystemGrant{{Path: t.TempDir(), Writable: true}}}}}
+	return &pluginsdk.CompileSandboxPolicyRequest{Context: requestContext(), Runtime: &pluginsdk.SandboxRuntimeFacts{Os: "linux", Architecture: "amd64", Transport: "local", RuntimeVersion: "0.81.0", RuntimeDigest: "2d3c29641c87921f7cd469387e4838b1676d54edb7291aebda7a780787d7c1b2"}, Policy: &pluginsdk.SandboxPolicySnapshot{PolicyId: "policy", Revision: 1, Digest: "policy-digest", CeilingDigest: "ceiling", Grants: &pluginsdk.SandboxGrants{Filesystem: []*pluginsdk.SandboxFilesystemGrant{{Path: t.TempDir(), Writable: true}}}}}
 }
 
 func TestDescribePinsPackagedLinuxRuntime(t *testing.T) {
@@ -23,9 +23,9 @@ func TestDescribePinsPackagedLinuxRuntime(t *testing.T) {
 	req := compileRequest(t)
 	result, err := p.DescribeSandboxProvider(context.Background(), &pluginsdk.DescribeSandboxProviderRequest{Context: req.Context, Runtime: req.Runtime})
 	require.NoError(t, err)
-	require.Equal(t, "0.80.0", result.Description.RuntimeVersion)
+	require.Equal(t, "0.81.0", result.Description.RuntimeVersion)
 	require.Equal(t, "runtime/nono-linux-amd64", result.Description.RuntimeArtifact.RelativePath)
-	require.Equal(t, "a66396777ed756dff196ef61cf704abd4feebf58599d41e2da3363bbe90e22af", result.Description.RuntimeArtifact.Sha256)
+	require.Equal(t, "2d3c29641c87921f7cd469387e4838b1676d54edb7291aebda7a780787d7c1b2", result.Description.RuntimeArtifact.Sha256)
 	require.Equal(t, "operation", result.Context.OperationId)
 	require.Equal(t, []string{"filesystem"}, result.Description.ReportClasses)
 }
@@ -81,7 +81,7 @@ func TestCompileRefusesUnverifiedRuntimeOrExpansion(t *testing.T) {
 		{"other binary", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Runtime.RuntimeDigest = "unverified" }},
 		{"expand variable", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Policy.Grants.Filesystem[0].Path = "/tmp/$HOME" }},
 		{"expand tilde", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Policy.Grants.Filesystem[0].Path = "~/secret" }},
-		{"unknown authority", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Context.ProtocolMajor = 2 }},
+		{"unknown authority", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Context.ProtocolMajor = 3 }},
 		{"expired", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Context.DeadlineUnixMs = 1 }},
 		{"missing policy", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Policy = nil }},
 		{"mcp without endpoint", func(r *pluginsdk.CompileSandboxPolicyRequest) { r.Policy.Grants.KandevMcp = true }},
@@ -164,4 +164,14 @@ func TestNetworkCompilationRequiresCoreEgressPortEnforcement(t *testing.T) {
 	var profile map[string]any
 	require.NoError(t, json.Unmarshal([]byte(result.Compiled.Artifacts[0].ContentUtf8), &profile))
 	require.Equal(t, "", profile["network"].(map[string]any)["upstream_proxy"])
+}
+
+func TestDescribeMajorTwoDeclaresOnlyImplementedPolicySchema(t *testing.T) {
+	request := compileRequest(t)
+	request.Context.ProtocolMajor = 2
+	result, err := (&nonoPlugin{}).DescribeSandboxProvider(context.Background(), &pluginsdk.DescribeSandboxProviderRequest{Context: request.Context, Runtime: request.Runtime})
+	require.NoError(t, err)
+	require.Equal(t, uint32(2), result.Context.SchemaVersion)
+	require.Equal(t, []uint32{1}, result.Description.CapabilitiesV2.PolicySchemas)
+	require.Equal(t, []string{"nono.audit.v1"}, result.Description.CapabilitiesV2.ObservationSchemas)
 }

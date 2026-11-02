@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/kandev/kandev/pkg/pluginsdk"
+	"github.com/kdlbs/kandev/pluginsdk"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -30,6 +30,9 @@ func (*nonoPlugin) NormalizeSandboxStatus(ctx context.Context, req *pluginsdk.No
 	reply, err := replyContext(ctx, req.GetContext())
 	if err != nil {
 		return nil, err
+	}
+	if req.Context.ProtocolMajor == 2 && req.EvidenceSchema == "nono.audit.v1" {
+		return normalizeRuntimeStatus(req, reply)
 	}
 	if req.Process == nil || req.Process.Pid <= 0 || req.Process.BirthId == "" || req.EvidenceSchema != "nono.session-registry.v1" || len(req.Evidence) > 64<<10 {
 		return nil, status.Error(codes.InvalidArgument, "invalid runtime identity evidence")
