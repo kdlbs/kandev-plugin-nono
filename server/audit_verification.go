@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/pem"
 	"os"
 	"path/filepath"
 
@@ -12,11 +11,11 @@ import (
 func (s *auditReportStream) verifyArtifacts(ctx context.Context, report *pluginsdk.SandboxReportV2) error {
 	result := &pluginsdk.SandboxAuditVerificationV2{ArtifactSetDigest: s.digest, VerifierVersion: "nono-" + runtimeVersion + "/audit-alpha-1", SessionId: s.session, EventRoot: auditMerkleRoot(s.leaves), EventCount: s.eventCount, ChainState: report.Integrity, Finalization: report.Finalization, SignatureState: "unchecked", LedgerState: "unavailable"}
 	if s.trust != nil {
-		if !validAuditPublicKey(s.trust.ExpectedPublicKeyPem) || !validStreamDigest(s.trust.ExpectedKeyFingerprint) || !boundedIdentity(s.trust.TrustRevision) {
+		der := auditPublicKeyDER(s.trust.ExpectedPublicKeyPem)
+		if der == nil || !validStreamDigest(s.trust.ExpectedKeyFingerprint) || !boundedIdentity(s.trust.TrustRevision) {
 			return invalidAudit()
 		}
-		block, _ := pem.Decode(s.trust.ExpectedPublicKeyPem)
-		if streamHash(block.Bytes) != s.trust.ExpectedKeyFingerprint {
+		if streamHash(der) != s.trust.ExpectedKeyFingerprint {
 			return invalidAudit()
 		}
 		result.ExpectedKeyFingerprint, result.TrustRevision = s.trust.ExpectedKeyFingerprint, s.trust.TrustRevision
@@ -93,6 +92,10 @@ func (s *auditReportStream) verifyNativeSigner(ctx context.Context, directory st
 	result.SignerKeyFingerprint = value.KeyID
 	result.SignatureState = "untrusted"
 	if s.trust == nil {
+		return nil
+	}
+	if !validAuditPublicKey(s.trust.ExpectedPublicKeyPem) {
+		result.SignatureState = "unsupported"
 		return nil
 	}
 	keyed, err := executeNativeAuditVerification(ctx, directory, s.session, s.trust.ExpectedPublicKeyPem)

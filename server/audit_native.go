@@ -99,12 +99,26 @@ func executeNativeAuditVerification(ctx context.Context, directory, session stri
 	return &result, nil
 }
 
-func validAuditPublicKey(raw []byte) bool {
+func auditPublicKeyDER(raw []byte) []byte {
+	if len(raw) == 0 || len(raw) > 16<<10 || !bytes.HasPrefix(bytes.TrimSpace(raw), []byte("-----BEGIN PUBLIC KEY-----")) {
+		return nil
+	}
 	block, rest := pem.Decode(raw)
 	if block == nil || block.Type != "PUBLIC KEY" || len(bytes.TrimSpace(rest)) > 0 {
+		return nil
+	}
+	if _, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
+		return nil
+	}
+	return block.Bytes
+}
+
+func validAuditPublicKey(raw []byte) bool {
+	der := auditPublicKeyDER(raw)
+	if der == nil {
 		return false
 	}
-	value, err := x509.ParsePKIXPublicKey(block.Bytes)
+	value, err := x509.ParsePKIXPublicKey(der)
 	key, ok := value.(*ecdsa.PublicKey)
 	return err == nil && ok && key.Curve == elliptic.P256()
 }

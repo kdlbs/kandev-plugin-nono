@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
@@ -9,6 +10,8 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kdlbs/kandev/pluginsdk"
@@ -20,7 +23,7 @@ func TestExplicitAuditVerificationSeparatesTrustSignatureAndCompleteness(t *test
 	require.NoError(t, err)
 	install := nativeVerifierInstall(t)
 	t.Chdir(install)
-	for _, mode := range []string{"trusted", "untrusted", "wrong-key", "unsigned", "incomplete", "ordinary-read", "redirected-bundle", "duplicate-bundle"} {
+	for _, mode := range []string{"trusted", "untrusted", "wrong-key", "unsupported-key", "malformed-key", "wrong-fingerprint", "prefixed-key", "unsigned", "incomplete", "ordinary-read", "redirected-bundle", "duplicate-bundle"} {
 		t.Run(mode, func(t *testing.T) {
 			_, session, publicKey := nativeVerifierFixture(t, fixture)
 			var sources []streamFixtureSource
@@ -52,22 +55,19 @@ func TestExplicitAuditVerificationSeparatesTrustSignatureAndCompleteness(t *test
 				sources = append(sources, streamFixtureSource{entry.schema, name, raw})
 			}
 			requests := streamFixtureRequestsForSession(t, session, sources, 256<<10)
-			if mode == "wrong-key" {
-				key, keyErr := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-				require.NoError(t, keyErr)
-				der, marshalErr := x509.MarshalPKIXPublicKey(&key.PublicKey)
-				require.NoError(t, marshalErr)
-				publicKey = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
-			}
+			publicKey = auditSelectedKeyFixture(t, mode, publicKey)
 			for _, request := range requests {
 				request.VerifyAuditV2 = mode != "ordinary-read"
-				if mode == "trusted" || mode == "wrong-key" {
+				if slices.Contains([]string{"trusted", "wrong-key", "unsupported-key", "malformed-key", "wrong-fingerprint", "prefixed-key"}, mode) {
 					block, _ := pem.Decode(publicKey)
 					request.TrustV2 = &pluginsdk.SandboxAuditTrustV2{ExpectedPublicKeyPem: publicKey, ExpectedKeyFingerprint: streamHash(block.Bytes), TrustRevision: "operator-revision-1"}
+					if mode == "wrong-fingerprint" {
+						request.TrustV2.ExpectedKeyFingerprint = strings.Repeat("b", 64)
+					}
 				}
 			}
 			result, readErr := consumeReportRequests(&nonoPlugin{}, requests)
-			if mode == "redirected-bundle" || mode == "duplicate-bundle" {
+			if slices.Contains([]string{"redirected-bundle", "duplicate-bundle", "malformed-key", "wrong-fingerprint", "prefixed-key"}, mode) {
 				require.Error(t, readErr)
 				return
 			}
@@ -88,13 +88,42 @@ func TestExplicitAuditVerificationSeparatesTrustSignatureAndCompleteness(t *test
 			require.Equal(t, "valid", verification.ChainState)
 			require.Equal(t, "valid", verification.LedgerState)
 			require.Equal(t, "final", verification.Finalization)
-			expected := map[string]string{"trusted": "verified", "untrusted": "untrusted", "wrong-key": "untrusted", "unsigned": "unsigned"}[mode]
+			expected := map[string]string{"trusted": "verified", "untrusted": "untrusted", "wrong-key": "untrusted", "unsigned": "unsigned", "unsupported-key": "unsupported"}[mode]
 			require.Equal(t, expected, verification.SignatureState)
 			if mode == "trusted" {
 				require.Equal(t, requests[0].TrustV2.ExpectedKeyFingerprint, verification.SignerKeyFingerprint)
 			}
 		})
 	}
+}
+
+func auditSelectedKeyFixture(t *testing.T, mode string, original []byte) []byte {
+	t.Helper()
+	var selected any
+	switch mode {
+	case "wrong-key":
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+		selected = &key.PublicKey
+	case "unsupported-key", "prefixed-key":
+		key, _, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
+		selected = key
+	}
+	if selected != nil {
+		der, err := x509.MarshalPKIXPublicKey(selected)
+		require.NoError(t, err)
+		original = pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
+	}
+	if mode == "malformed-key" {
+		block, _ := pem.Decode(original)
+		block.Type = "PRIVATE KEY"
+		original = pem.EncodeToMemory(block)
+	}
+	if mode == "prefixed-key" {
+		original = append([]byte("unexpected text\n"), original...)
+	}
+	return original
 }
 
 func TestAuditStreamBindsVerificationActionAndTrustAcrossChunks(t *testing.T) {
