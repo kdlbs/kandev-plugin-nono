@@ -3,7 +3,7 @@ module kandev-plugin-nono
 go 1.26.0
 
 require (
-	github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102134114-c807e17bf0d2
+	github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11

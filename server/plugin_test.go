@@ -175,7 +175,8 @@ func TestDescribeMajorTwoDeclaresOnlyImplementedPolicySchema(t *testing.T) {
 	require.Equal(t, []uint32{1}, result.Description.CapabilitiesV2.PolicySchemas)
 	require.Equal(t, []string{"nono.audit.v1"}, result.Description.CapabilitiesV2.ObservationSchemas)
 	require.Equal(t, []string{pluginsdk.SandboxReportSchemaV2}, result.Description.CapabilitiesV2.ReportSchemas)
-	require.Len(t, result.Description.RuntimeSources, 3)
+	require.Len(t, result.Description.RuntimeSources, 5)
+	require.Equal(t, []string{"nono.audit-session.alpha"}, result.Description.CapabilitiesV2.AuditVerificationFormats)
 	require.Equal(t, uint32(32<<20), result.Description.RuntimeSources[1].MaxBytes)
 	require.Equal(t, "audit_final", result.Description.RuntimeSources[2].Kind)
 }

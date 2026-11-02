@@ -36,7 +36,7 @@ func validateReportChunk(req *pluginsdk.ReadSandboxReportRequest) error {
 	if len(chunk.Content) > 256<<10 || len(chunk.Content) == 0 && !chunk.Final || chunk.TotalBytes > maximumReportBytes || uint64(len(chunk.Content)) > chunk.TotalBytes {
 		return invalidAudit()
 	}
-	if chunk.SourceSchema != "nono.audit.v1" && chunk.SourceSchema != "nono.session.v1" {
+	if auditSourceFilename(chunk.SourceSchema) == "" {
 		return status.Error(codes.Unimplemented, "unsupported sandbox audit source schema")
 	}
 	expected := streamHash([]byte(chunk.SourceSchema + "\x00" + chunk.SourceRelativePath))
@@ -72,7 +72,7 @@ func (s *auditReportStream) consume(ctx context.Context, req *pluginsdk.ReadSand
 		}
 	}
 	s.sequence++
-	return s.result(events)
+	return s.result(ctx, events)
 }
 
 func (s *auditReportStream) beginSource(chunk *pluginsdk.SandboxAuditChunkV2) error {
@@ -86,11 +86,11 @@ func (s *auditReportStream) beginSource(chunk *pluginsdk.SandboxAuditChunkV2) er
 	}
 	header := proto.Clone(chunk).(*pluginsdk.SandboxAuditChunkV2)
 	header.Content = nil
-	name := "audit-events.ndjson"
-	if chunk.SourceSchema == "nono.session.v1" {
-		name = "session.json"
-	}
+	name := auditSourceFilename(chunk.SourceSchema)
 	owned := chunk.SourceRelativePath == "nono/audit/"+s.session+"/"+name
+	if chunk.SourceSchema == "nono.ledger.v1" {
+		owned = chunk.SourceRelativePath == "nono/audit/ledger.ndjson"
+	}
 	s.source = &auditStreamSource{header: header, digest: sha256.New(), owned: owned}
 	if owned && chunk.SourceSchema == "nono.audit.v1" {
 		s.hasAudit = true
@@ -108,11 +108,17 @@ func (s *auditReportStream) consumeSource(ctx context.Context, req *pluginsdk.Re
 	if !source.owned {
 		return nil, nil
 	}
+	if s.verify {
+		s.artifacts[source.header.SourceSchema] = append(s.artifacts[source.header.SourceSchema], content...)
+	}
 	if source.header.SourceSchema == "nono.session.v1" {
 		if len(source.metadata)+len(content) > 8<<20 {
 			return nil, status.Error(codes.ResourceExhausted, "sandbox audit metadata limit exceeded")
 		}
 		source.metadata = append(source.metadata, content...)
+		return nil, nil
+	}
+	if source.header.SourceSchema != "nono.audit.v1" {
 		return nil, nil
 	}
 	source.pending = append(source.pending, content...)
@@ -147,6 +153,21 @@ func (s *auditReportStream) consumeSource(ctx context.Context, req *pluginsdk.Re
 		return nil, invalidAudit()
 	}
 	return events, nil
+}
+
+func auditSourceFilename(schema string) string {
+	switch schema {
+	case "nono.audit.v1":
+		return "audit-events.ndjson"
+	case "nono.session.v1":
+		return "session.json"
+	case "nono.attestation.v1":
+		return "audit-attestation.bundle"
+	case "nono.ledger.v1":
+		return "ledger.ndjson"
+	default:
+		return ""
+	}
 }
 
 func (s *auditReportStream) consumeRecord(req *pluginsdk.ReadSandboxReportRequest, line []byte) (*pluginsdk.SandboxAuditEventV2, error) {

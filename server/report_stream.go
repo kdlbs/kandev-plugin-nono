@@ -40,6 +40,9 @@ type auditReportStream struct {
 	complete                bool
 	timer                   *time.Timer
 	metadata                *auditSessionSummary
+	verify                  bool
+	trust                   *pluginsdk.SandboxAuditTrustV2
+	artifacts               map[string][]byte
 }
 
 type auditSourceBinding struct {
@@ -95,6 +98,13 @@ func (p *nonoPlugin) admitReportStream(req *pluginsdk.ReadSandboxReportRequest) 
 		return nil, status.Error(codes.ResourceExhausted, "sandbox report verifier capacity exceeded")
 	}
 	stream := &auditReportStream{context: proto.Clone(req.Context).(*pluginsdk.SandboxRequestContext), policy: proto.Clone(req.Policy).(*pluginsdk.SandboxPolicySnapshot), handle: chunk.OperationHandle, digest: chunk.ArtifactSetDigest, session: chunk.ProviderSessionId, sourceCount: chunk.SourceCount, seenIDs: map[string]bool{}}
+	stream.verify = req.VerifyAuditV2 || req.TrustV2 != nil
+	if req.TrustV2 != nil {
+		stream.trust = proto.Clone(req.TrustV2).(*pluginsdk.SandboxAuditTrustV2)
+	}
+	if stream.verify {
+		stream.artifacts = map[string][]byte{}
+	}
 	p.reports.streams[chunk.OperationHandle] = stream
 	expires := min(time.Until(time.UnixMilli(req.Context.DeadlineUnixMs)), 30*time.Second)
 	handle := chunk.OperationHandle
@@ -111,7 +121,7 @@ func (p *nonoPlugin) admitReportStream(req *pluginsdk.ReadSandboxReportRequest) 
 func (s *auditReportStream) matches(req *pluginsdk.ReadSandboxReportRequest) bool {
 	a, b := s.context, req.Context
 	chunk := req.ChunkV2
-	return a.AttemptId == b.AttemptId && a.ExecutionId == b.ExecutionId && a.Generation == b.Generation && a.InstallationId == b.InstallationId && a.ProviderKey == b.ProviderKey && proto.Equal(s.policy, req.Policy) && s.digest == chunk.ArtifactSetDigest && s.session == chunk.ProviderSessionId && s.sourceCount == chunk.SourceCount
+	return a.AttemptId == b.AttemptId && a.ExecutionId == b.ExecutionId && a.Generation == b.Generation && a.InstallationId == b.InstallationId && a.ProviderKey == b.ProviderKey && proto.Equal(s.policy, req.Policy) && s.digest == chunk.ArtifactSetDigest && s.session == chunk.ProviderSessionId && s.sourceCount == chunk.SourceCount && s.verify == (req.VerifyAuditV2 || req.TrustV2 != nil) && proto.Equal(s.trust, req.TrustV2)
 }
 
 func (s *auditReportStream) release() {
@@ -119,9 +129,10 @@ func (s *auditReportStream) release() {
 	s.source = nil
 	s.leaves = nil
 	s.seenIDs = nil
+	s.artifacts = nil
 }
 
-func (s *auditReportStream) result(events []*pluginsdk.SandboxAuditEventV2) (*pluginsdk.SandboxReportV2, error) {
+func (s *auditReportStream) result(ctx context.Context, events []*pluginsdk.SandboxAuditEventV2) (*pluginsdk.SandboxReportV2, error) {
 	result := &pluginsdk.SandboxReportV2{Events: events, Coverage: reportCoverage(), Integrity: "unchecked", Finalization: "live", OperationHandle: s.handle, ArtifactSetDigest: s.digest, NextSequence: s.sequence}
 	if uint32(len(s.bindings)) != s.sourceCount || s.source != nil {
 		return result, nil
@@ -144,6 +155,11 @@ func (s *auditReportStream) result(events []*pluginsdk.SandboxAuditEventV2) (*pl
 		}
 		if s.metadata.Ended != nil {
 			result.Finalization = "final"
+		}
+	}
+	if s.verify {
+		if err = s.verifyArtifacts(ctx, result); err != nil {
+			return nil, err
 		}
 	}
 	s.release()

@@ -7,10 +7,13 @@ import (
 )
 
 type auditSessionSummary struct {
-	SessionID  string  `json:"session_id"`
-	Ended      *string `json:"ended"`
-	EventCount uint64  `json:"audit_event_count"`
-	Integrity  *struct {
+	SessionID   string  `json:"session_id"`
+	Ended       *string `json:"ended"`
+	EventCount  uint64  `json:"audit_event_count"`
+	Attestation *struct {
+		BundleFilename string `json:"bundle_filename"`
+	} `json:"audit_attestation"`
+	Integrity *struct {
 		Algorithm  string `json:"hash_algorithm"`
 		EventCount uint64 `json:"event_count"`
 		ChainHead  string `json:"chain_head"`

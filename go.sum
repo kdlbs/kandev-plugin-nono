@@ -27,6 +27,8 @@ github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5Xum
 github.com/jhump/protoreflect v1.17.0/go.mod h1:h9+vUUL38jiBzck8ck+6G/aeMX8Z4QUY/NiJPwPNi+8=
 github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102134114-c807e17bf0d2 h1:UpLWw5Chip5uxQcxoPLGKpSZ2vvdmdHPZo2tmSewAe8=
 github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102134114-c807e17bf0d2/go.mod h1:+NkPriN3N6+fXNs62LJMsHTczihEBup9y5MjYINWC7g=
+github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6 h1:t1GqQ9Lw3A894PRL1PEX/D7y1QZ7x7+HhPHpTIT6h3w=
+github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6/go.mod h1:+NkPriN3N6+fXNs62LJMsHTczihEBup9y5MjYINWC7g=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12 h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=

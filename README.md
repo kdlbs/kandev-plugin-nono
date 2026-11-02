@@ -8,13 +8,21 @@ The provider compiles canonical grants for pinned Nono 0.81.0 on Linux amd64. It
 
 The baseline host integration has recorded managed acceptance with Nono 0.80.0, Pi ACP 0.0.34, and Pi 1.3.0. Those historical receipts cover ACP/native tools and MCP, same-session restart, cancellation, sibling isolation, and cleanup. They are recorded in the host's `docs/plans/nono-sandbox-integration/acceptance.md`.
 
-The 0.81.0 candidate passes baseline runtime conformance and the plugin's real compiled-policy race tests. The manifest now requires sandbox protocol major 2. The compiler still accepts policy schema 1 and file approvals only. The public standalone SDK pin includes the major 2 contract. Typed audit reports pass the real runtime and packaged host integration checks. Current-pair managed acceptance, signature verification, and broader approvals remain pending in the expansion package. Source support for a request kind does not enable it in this plugin.
+The 0.81.0 candidate passes baseline runtime conformance and the plugin's real compiled-policy race tests. The manifest now requires sandbox protocol major 2. The compiler still accepts policy schema 1 and file approvals only. The public standalone SDK pin includes the major 2 contract. Typed audit reports pass the real runtime and packaged host integration checks. Explicit provider audit verification passes signed-fixture and pinned-runtime tests. The host operator action, trust persistence, current-pair managed acceptance, and broader approvals remain pending in the expansion package. Source support for a request kind does not enable it in this plugin.
 
 A session registry record has no policy digest. Normalization can return supervisor, child, and provider session identity for a matching core-owned process. It returns no confinement evidence. Core must verify birth identity and ancestry before using those identities. Audit reports remain partial because the event log does not record every denied operation.
 
 Protocol major 2 runtime observations parse the conditional `sandbox_runtime` audit event from the captured provider session's file. The provider verifies the event chain and retains the original timestamp, platform, optional detected Landlock ABI, optional execute-enforcement claim, and command-mediation state. A missing event yields no observations. A sibling or nested session file cannot describe the captured supervisor. These historical facts contain no current-policy attestation and cannot activate the shield. Kandev separately reports physical process ownership and its completed launch preparation checks.
 
 Network grants use protocol `tcp`. Nono 0.81.0 removes ports from plain `allow_domain` entries, so the provider requires Kandev's `egress_proxy` capability for exact host/port enforcement. Core supplies a private upstream CONNECT relay. They do not enforce the application protocol. HTTP/HTTPS-specific grants remain unsupported. Kandev MCP uses its explicit logical grant and current private relay. Managed acceptance for the upgraded pair remains pending.
+
+### Final audit verification
+
+Major 2 declares the optional `nono.audit-session.alpha` verification format. An explicit `verify_audit_v2` request consumes the same bounded, session-bound source chunks as reporting. It also accepts optional operator public trust. Ordinary reads do not execute a verifier. The provider hashes final session metadata, the signature bundle, and the local ledger as distinct declared sources.
+
+Verification reconstructs only captured files in private temporary storage. It uses a copied executable whose SHA-256 digest matches the pinned package runtime. It clears the child environment, disables Nono update checks, bounds process time and output, and kills the owned process group on cancellation. No runtime path or command comes from the request. Bundle filenames must match the captured fixed name, and duplicate JSON fields are rejected.
+
+Nono's JSON verifier can exit successfully when verification fails. The adapter checks chain roots, counts, session metadata, ledger inclusion, signature, and expected key separately. A mathematically valid embedded signer remains untrusted until it matches the operator's public key and trust revision. Missing signatures are unsigned. Missing final metadata is interrupted. These results do not prove current confinement. The signed public fixture records the actual 0.81.0 producer and digests; its disposable private key is excluded.
 
 ## Develop
 

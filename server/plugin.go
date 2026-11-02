@@ -58,8 +58,12 @@ func (*nonoPlugin) DescribeSandboxProvider(ctx context.Context, req *pluginsdk.D
 	}}
 	if req.Context.ProtocolMajor == 2 {
 		result.Description.CapabilitiesV2 = &pluginsdk.SandboxCapabilitiesV2{PolicySchemas: []uint32{1}, OperationKinds: []string{"filesystem"}, ActorKinds: []string{"child_process"}, NetworkMode: "static_egress", ObservationSchemas: []string{"nono.audit.v1"}, ReportSchemas: []string{pluginsdk.SandboxReportSchemaV2}}
+		result.Description.CapabilitiesV2.AuditVerificationFormats = []string{"nono.audit-session.alpha"}
 		result.Description.RuntimeSources[1].MaxBytes = maximumReportBytes
 		result.Description.RuntimeSources = append(result.Description.RuntimeSources, &pluginsdk.SandboxRuntimeSource{Key: "nono.session.v1", Kind: "audit_final", RelativeDirectory: "nono/audit", FilenameSuffix: "session.json", MaxDepth: 2, MaxFiles: 16, MaxBytes: 8 << 20})
+		result.Description.RuntimeSources = append(result.Description.RuntimeSources,
+			&pluginsdk.SandboxRuntimeSource{Key: "nono.attestation.v1", Kind: "audit_final", RelativeDirectory: "nono/audit", FilenameSuffix: "audit-attestation.bundle", MaxDepth: 2, MaxFiles: 16, MaxBytes: 8 << 20},
+			&pluginsdk.SandboxRuntimeSource{Key: "nono.ledger.v1", Kind: "audit_final", RelativeDirectory: "nono/audit", FilenameSuffix: "ledger.ndjson", MaxDepth: 1, MaxFiles: 1, MaxBytes: maximumReportBytes})
 		result.Description.Limitations[2] = "Typed reports cover recorded filesystem, network, command and endpoint decisions. Coverage is partial. Redacted identities cannot authorize policy learning."
 	}
 	return result, nil
