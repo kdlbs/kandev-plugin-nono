@@ -117,15 +117,19 @@ func copyPinnedAuditVerifier(ctx context.Context, directory string) (string, err
 	defer func() { _ = root.Close() }()
 	for _, name := range []string{"runtime", "runtime/nono-linux-amd64"} {
 		info, statErr := root.Lstat(name)
-		if statErr != nil || info.Mode()&os.ModeSymlink != 0 {
+		if statErr != nil || info.Mode()&os.ModeSymlink != 0 || name == "runtime" && !info.IsDir() || name != "runtime" && !info.Mode().IsRegular() {
 			return "", verifierUnavailable()
 		}
 	}
-	file, err := root.Open("runtime/nono-linux-amd64")
+	file, err := openAuditRuntime(root)
 	if err != nil {
 		return "", verifierUnavailable()
 	}
 	defer func() { _ = file.Close() }()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return "", verifierUnavailable()
+	}
 	raw, err := io.ReadAll(io.LimitReader(file, (128<<20)+1))
 	if err != nil || len(raw) > 128<<20 || streamHash(raw) != runtimeDigest {
 		return "", verifierUnavailable()

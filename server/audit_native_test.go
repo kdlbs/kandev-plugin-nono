@@ -6,10 +6,36 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestNativeVerifierRefusesNonRegularRuntimeBeforeOpening(t *testing.T) {
+	install := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(install, "runtime"), 0700))
+	path := filepath.Join(install, "runtime", "nono-linux-amd64")
+	require.NoError(t, syscall.Mkfifo(path, 0600))
+	t.Chdir(install)
+	scratch := t.TempDir()
+	done := make(chan error, 1)
+	go func() { _, err := copyPinnedAuditVerifier(t.Context(), scratch); done <- err }()
+	select {
+	case err := <-done:
+		require.Error(t, err)
+	case <-time.After(2 * time.Second):
+		// Release a blocked FIFO read before failing the deadlock guard.
+		writer, err := os.OpenFile(path, os.O_WRONLY|syscall.O_NONBLOCK, 0600)
+		require.NoError(t, err)
+		_, err = writer.Write([]byte("invalid runtime"))
+		require.NoError(t, err)
+		require.NoError(t, writer.Close())
+		<-done
+		t.Fatal("the verifier must reject a non-regular runtime before opening it")
+	}
+}
 
 func TestPinnedNativeAuditVerifierChecksSignatureResults(t *testing.T) {
 	fixture, err := filepath.Abs("testdata/nono-audit-081-signed")
