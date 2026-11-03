@@ -16,6 +16,14 @@ Protocol major 2 runtime observations parse the conditional `sandbox_runtime` au
 
 Network grants use protocol `tcp`. Nono 0.81.0 removes ports from plain `allow_domain` entries, so the provider requires Kandev's `egress_proxy` capability for exact host/port enforcement. Core supplies a private upstream CONNECT relay. They do not enforce the application protocol. HTTP/HTTPS-specific grants remain unsupported. Kandev MCP uses its explicit logical grant and current private relay. Managed acceptance for the upgraded pair remains pending.
 
+### Required network isolation
+
+New launches with a TCP grant or logical Kandev MCP access require Linux user and network namespaces. The compiled profile sets `linux.isolate.network` and leaves unrestricted namespace loopback disabled. Nono keeps its proxy outside the child namespace and provides the controlled proxy bridge. The legacy exact-destination relay remains in use; this does not enable native network approvals.
+
+The default kernel port restriction alone is insufficient: an owned regression reached another host address on the proxy port without passing through the proxy. The namespace regression now pairs permitted proxy work with an alternate-address listener that must receive zero child requests. A separate process-scoped seccomp test denies namespace creation and verifies that Nono refuses the proxy launch before running the child. A blocked-network, filesystem-only policy remains usable in that control.
+
+If the host or container refuses user/network namespaces, a proxy launch fails. There is no fallback that disables isolation or delegates network enforcement elsewhere. Use a compatible execution host. Existing captured attempts and saved policy digests are not rewritten. Current-pair managed acceptance and the broader native network approval matrix remain pending.
+
 ### Final audit verification
 
 Major 2 declares the optional `nono.audit-session.alpha` verification format. An explicit `verify_audit_v2` request consumes the same bounded, session-bound source chunks as reporting. It also accepts optional operator public trust. Ordinary reads do not execute a verifier. The provider hashes final session metadata, the signature bundle, and the local ledger as distinct declared sources.

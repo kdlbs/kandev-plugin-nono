@@ -116,7 +116,11 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 	for _, name := range []string{"home", "config", "state", "tmp"} {
 		require.NoError(t, os.Mkdir(filepath.Join(root, name), 0700))
 	}
-	output, err = cmd.CombinedOutput()
+	if withProxy {
+		output, err = runWithProxyPortCollision(t, cmd)
+	} else {
+		output, err = cmd.CombinedOutput()
+	}
 	require.NoError(t, err, string(output))
 	var results map[string]bool
 	require.NoError(t, json.Unmarshal(output, &results), string(output))
@@ -125,6 +129,7 @@ func runPinnedRuntime(t *testing.T, withProxy bool) {
 		expected["allowed_proxy"] = true
 		expected["denied_proxy"] = true
 		expected["proxy_bypass_removed"] = true
+		expected["denied_proxy_port_collision"] = true
 	}
 	require.Equal(t, expected, results)
 	require.Zero(t, forbiddenRequests.Load())

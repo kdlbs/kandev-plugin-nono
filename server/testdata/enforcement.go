@@ -35,6 +35,7 @@ func main() {
 		results["proxy_bypass_removed"] = os.Getenv("NO_PROXY") == "" && os.Getenv("no_proxy") == "" && os.Getenv("NONO_NO_PROXY") == ""
 		proxy, err := url.Parse(os.Getenv("HTTP_PROXY"))
 		if err == nil && proxy.Host != "" {
+			probeProxyPortCollision(proxy.Port(), results)
 			client := http.Client{Timeout: 2 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(proxy)}}
 			response, err := client.Get(os.Args[4])
 			if err == nil {
@@ -51,4 +52,21 @@ func main() {
 		}
 	}
 	_ = json.NewEncoder(os.Stdout).Encode(results)
+}
+
+func probeProxyPortCollision(port string, results map[string]bool) {
+	if err := json.NewEncoder(os.Stdout).Encode(map[string]string{"proxy_port": port}); err != nil {
+		os.Exit(2)
+	}
+	var ready bool
+	if err := json.NewDecoder(os.Stdin).Decode(&ready); err != nil || !ready {
+		os.Exit(2)
+	}
+	client := &http.Client{Timeout: time.Second, Transport: &http.Transport{}}
+	defer client.CloseIdleConnections()
+	response, err := client.Get("http://" + net.JoinHostPort("127.0.0.2", port))
+	results["denied_proxy_port_collision"] = err != nil
+	if err == nil {
+		_ = response.Body.Close()
+	}
 }

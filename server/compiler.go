@@ -48,6 +48,7 @@ func (*nonoPlugin) CompileSandboxPolicy(ctx context.Context, req *pluginsdk.Comp
 		"groups":      map[string]any{"exclude": excludedGroups},
 		"filesystem":  filesystem,
 		"network":     network,
+		"linux":       map[string]any{"isolate": map[string]any{"network": len(req.Policy.Grants.Network) > 0 || req.Policy.Grants.KandevMcp}},
 		"workdir":     map[string]any{"access": "none"},
 		"environment": map[string]any{"allow_vars": keys, "set_vars": childVars},
 		"security": map[string]any{"capability_elevation": true, "signal_mode": "isolated", "process_info_mode": "isolated", "wsl2_proxy_policy": "error",
