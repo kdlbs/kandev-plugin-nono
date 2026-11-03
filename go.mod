@@ -3,7 +3,7 @@ module kandev-plugin-nono
 go 1.26.0
 
 require (
-	github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6
+	github.com/kdlbs/kandev/pluginsdk v0.0.0-20261103173540-c87e576f6018
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
@@ -13,6 +13,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-plugin v1.8.0 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect

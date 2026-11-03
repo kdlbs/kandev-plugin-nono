@@ -29,6 +29,8 @@ github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102134114-c807e17bf0d2 h1:UpLWw5Ch
 github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102134114-c807e17bf0d2/go.mod h1:+NkPriN3N6+fXNs62LJMsHTczihEBup9y5MjYINWC7g=
 github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6 h1:t1GqQ9Lw3A894PRL1PEX/D7y1QZ7x7+HhPHpTIT6h3w=
 github.com/kdlbs/kandev/pluginsdk v0.0.0-20261102191011-0a098c9031d6/go.mod h1:+NkPriN3N6+fXNs62LJMsHTczihEBup9y5MjYINWC7g=
+github.com/kdlbs/kandev/pluginsdk v0.0.0-20261103173540-c87e576f6018 h1:w7xdg/kRg7AHikb8C86juOpzOoGZwCb4a2zXu0blGe8=
+github.com/kdlbs/kandev/pluginsdk v0.0.0-20261103173540-c87e576f6018/go.mod h1:V0Y6IoJvwa+OuZdfgD3Ck2EgQut7S3jSu8OLQRo7xxs=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12 h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=
