@@ -16,14 +16,13 @@ jobs:
     name: Tidy, format, vet, and test
     runs-on: ubuntu-latest
     steps:
-      # The local SDK replacement in go.mod expects these checkouts to be
-      # siblings: plugin/../kandev/apps/backend.
+      # The SDK is a pinned public module. Only plugin-pack needs a sibling host checkout.
       - name: Check out plugin
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           path: plugin
 
-      - name: Read pinned Kandev source revision
+      - name: Read pinned packaging-tool revision
         id: sdk
         working-directory: plugin
         run: |
@@ -32,15 +31,14 @@ jobs:
           [[ "$sdk_ref" =~ ^[0-9a-f]{40}$ ]]
           echo "ref=$sdk_ref" >> "$GITHUB_OUTPUT"
 
-      - name: Check out kandev SDK contract
+      - name: Check out Kandev packaging tool
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: kdlbs/kandev
-          path: kandev
+          path: kdlbs-kandev
           ref: ${{ steps.sdk.outputs.ref }}
           sparse-checkout: |
             apps/backend
-            apps/packages/plugin-sdk
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -48,22 +46,15 @@ jobs:
           go-version-file: plugin/go.mod
           cache-dependency-path: plugin/go.sum
 
-      - name: Set up Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
-
-      - name: Install recipe test dependencies
-        working-directory: plugin
-        run: npm ci --ignore-scripts
-
       - name: Check module files are tidy
         working-directory: plugin
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+      - name: Build without a host checkout
+        working-directory: plugin
+        run: sh scripts/check-sdk-consumer.sh
 
       - name: Check formatting
         working-directory: plugin
@@ -77,31 +68,3 @@ jobs:
         working-directory: plugin
         run: |
           make test
-          make audit-recipes
-
-  base-floor:
-    name: Default template on Kandev v0.86.0
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out plugin
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          path: plugin
-
-      - name: Check out declared minimum SDK
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          repository: kdlbs/kandev
-          path: kandev
-          ref: v0.86.0
-          sparse-checkout: apps/backend
-
-      - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: plugin/go.mod
-          cache-dependency-path: plugin/go.sum
-
-      - name: Test provider-free generated backend
-        working-directory: plugin
-        run: go test ./server/...

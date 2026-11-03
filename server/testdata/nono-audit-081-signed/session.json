@@ -1,0 +1,32 @@
+{
+  "session_id": "07eb1833bbb843de",
+  "started": "2026-11-02T18:55:39.541840647+00:00",
+  "ended": "2026-11-02T18:55:39.597507356+00:00",
+  "command": [
+    "/tmp/nono-audit-api-probe-j2594k3y/work/child"
+  ],
+  "executable_identity": {
+    "resolved_path": "/tmp/nono-audit-api-probe-j2594k3y/work/child",
+    "sha256": "f264bf995f05ce179c776da3c55c03d1792837dfb7f157524a810058da3a8d5e"
+  },
+  "tracked_paths": [
+    "/tmp/nono-audit-api-probe-j2594k3y/work"
+  ],
+  "snapshot_count": 0,
+  "exit_code": 0,
+  "merkle_roots": [],
+  "network_events": [],
+  "audit_event_count": 2,
+  "audit_integrity": {
+    "hash_algorithm": "sha256",
+    "event_count": 2,
+    "chain_head": "6ded56b6ac0d5d80644649aff686fead1cfa6537d67af8389322e18926f43e45",
+    "merkle_root": "f0c2b4b50cf12900f02dc7d698bd4e69a52810de84ab98805140720c4fd9fdf0"
+  },
+  "audit_attestation": {
+    "predicate_type": "https://nono.sh/attestation/audit-session/alpha",
+    "key_id": "362dbff5f42c1d333606be1c724dbda1f5c6410826bc97c0da17e35492ebe8c1",
+    "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEVz4RZV5mz/mYmrPOAj9NVUw6mUXd6N80T2fb96gCDgrONVpUeN8dhMO1ZnQd0sHuDhz7ifwO/6OMztxzz3eKCA==",
+    "bundle_filename": "audit-attestation.bundle"
+  }
+}

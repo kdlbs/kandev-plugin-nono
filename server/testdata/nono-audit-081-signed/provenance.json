@@ -1,0 +1,15 @@
+{
+  "runtime_version": "0.81.0",
+  "runtime_sha256": "2d3c29641c87921f7cd469387e4838b1676d54edb7291aebda7a780787d7c1b2",
+  "source_commit": "b2d859deeb7a65f9ca5b334eb8726637ba76c866",
+  "session_id": "07eb1833bbb843de",
+  "signer_fingerprint": "362dbff5f42c1d333606be1c724dbda1f5c6410826bc97c0da17e35492ebe8c1",
+  "producer": "Pinned Nono run with a generated disposable file key, outbound network blocked, and a static empty Go child. The private key is excluded.",
+  "files": {
+    "audit-attestation.bundle": "f4759ddde6091bdc9479d85787561914e933d4cadc90efe317972b069761d902",
+    "audit-events.ndjson": "48f3b8bdb932918dc2fa02871376f8a474cca5a9b7db159f8a64b69ab7341af5",
+    "ledger.ndjson": "f313883bfc384f289056763ee6b21f68c8570f24937a058370ce745e290c86dd",
+    "session.json": "e3406f094a7a473ee09b7dd8a786ba4a1fdc7c31ddd8188ab08d305a4069749b",
+    "signer-public.pem": "aae657aaa908b3df7931e515a5bc5b22f55d9a1c24e3de09a1a57c99aed33376"
+  }
+}
